@@ -52,11 +52,12 @@ def detector_postprocess(
         output_boxes = None
     assert output_boxes is not None, "Predictions must contain boxes!"
 
+    print(">>>>>scale_x ", scale_x, scale_y)
     output_boxes.scale(scale_x, scale_y)
     output_boxes.clip(results.image_size)
 
     results = results[output_boxes.nonempty()]
-
+    # print(">>>> results ", results)
     if results.has("pred_masks"):
         if isinstance(results.pred_masks, ROIMasks):
             roi_masks = results.pred_masks

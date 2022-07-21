@@ -88,6 +88,9 @@ class ImageList(object):
         image_sizes_tensor = [shapes_to_tensor(x) for x in image_sizes]
         max_size = torch.stack(image_sizes_tensor).max(0).values
 
+        print(">>>image_sizes ", image_sizes)
+        print(">>>image_sizes_tensor ", image_sizes_tensor)
+        print(">>>max_size ", max_size)
         if padding_constraints is not None:
             square_size = padding_constraints.get("square_size", 0)
             if square_size > 0:
@@ -96,6 +99,7 @@ class ImageList(object):
             if "size_divisibility" in padding_constraints:
                 size_divisibility = padding_constraints["size_divisibility"]
         if size_divisibility > 1:
+            print("????? 11122222 ")
             stride = size_divisibility
             # the last two dims are H,W, both subject to divisibility requirement
             max_size = (max_size + (stride - 1)).div(stride, rounding_mode="floor") * stride
@@ -103,10 +107,12 @@ class ImageList(object):
         # handle weirdness of scripting and tracing ...
         if torch.jit.is_scripting():
             max_size: List[int] = max_size.to(dtype=torch.long).tolist()
+            print(">>>>max_size ", max_size)
         else:
             if torch.jit.is_tracing():
                 image_sizes = image_sizes_tensor
 
+        print(">>>>len(tensors) ", len(tensors))
         if len(tensors) == 1:
             # This seems slightly (2%) faster.
             # TODO: check whether it's faster for multiple images as well
@@ -115,6 +121,7 @@ class ImageList(object):
             batched_imgs = F.pad(tensors[0], padding_size, value=pad_value).unsqueeze_(0)
         else:
             # max_size can be a tensor in tracing mode, therefore convert to list
+            print(">>>>max_size ", max_size)
             batch_shape = [len(tensors)] + list(tensors[0].shape[:-2]) + list(max_size)
             device = (
                 None if torch.jit.is_scripting() else ("cpu" if torch.jit.is_tracing() else None)

@@ -5,6 +5,7 @@ import os
 from typing import Dict, List, Tuple
 import torch
 from torch import Tensor, nn
+import numpy as np
 
 import detectron2.data.transforms as T
 from detectron2.checkpoint import DetectionCheckpointer
@@ -83,14 +84,15 @@ def export_scripting(torch_model):
             self.eval()
 
     if isinstance(torch_model, GeneralizedRCNN):
-
         class ScriptableAdapter(ScriptableAdapterBase):
-            def forward(self, inputs: Tuple[Dict[str, torch.Tensor]]) -> List[Dict[str, Tensor]]:
+            def forward(self, inputs: Dict[str, torch.Tensor]) -> Tuple[Tensor, Tensor, Tensor]:
                 instances = self.model.inference(inputs, do_postprocess=False)
-                return [i.get_fields() for i in instances]
-
+                scores = [i.get_fields()["scores"] for i in instances]
+                max_len = max([len(s) for s in scores])
+                scores = [torch.cat((s, torch.zeros(max_len-len(s))), 0) for s in scores]
+                return torch.vstack([i.get_fields()["pred_keypoints"] for i in instances]), torch.vstack(scores), torch.vstack([i.get_fields()["pred_boxes"] for i in instances])
+                # return [i.get_fields() for i in instances]
     else:
-
         class ScriptableAdapter(ScriptableAdapterBase):
             def forward(self, inputs: Tuple[Dict[str, torch.Tensor]]) -> List[Dict[str, Tensor]]:
                 instances = self.model(inputs)
@@ -144,8 +146,20 @@ def export_tracing(torch_model, inputs):
         unused in deployment but needed for evaluation. We add it manually here.
         """
         input = inputs[0]
+        print("input: ", input)
         instances = traceable_model.outputs_schema(ts_model(input["image"]))[0]["instances"]
+        print("<<<<<instances ", instances)
         postprocessed = detector_postprocess(instances, input["height"], input["width"])
+        print(">>>>>postprocessed ", postprocessed)
+
+        import numpy as np
+        import cv2
+        img = cv2.imread(input["file_name"])
+        from detectron2.utils.visualizer import ColorMode, Visualizer
+        viz = Visualizer(img[:,:,::-1], scale=1.0)
+        output = viz.draw_instance_predictions(postprocessed.to('cpu'))
+        cv2.imwrite('result.jpg', output.get_image()[:,:,::-1])
+
         return [{"instances": postprocessed}]
 
     return eval_wrapper
@@ -225,17 +239,18 @@ if __name__ == "__main__":
     elif args.export_method == "tracing":
         exported_model = export_tracing(torch_model, sample_inputs)
 
+
     # run evaluation with the converted model
-    if args.run_eval:
-        assert exported_model is not None, (
-            "Python inference is not yet implemented for "
-            f"export_method={args.export_method}, format={args.format}."
-        )
-        logger.info("Running evaluation ... this takes a long time if you export to CPU.")
-        dataset = cfg.DATASETS.TEST[0]
-        data_loader = build_detection_test_loader(cfg, dataset)
-        # NOTE: hard-coded evaluator. change to the evaluator for your dataset
-        evaluator = COCOEvaluator(dataset, output_dir=args.output)
-        metrics = inference_on_dataset(exported_model, data_loader, evaluator)
-        print_csv_format(metrics)
-    logger.info("Success.")
+    # if args.run_eval:
+    #     assert exported_model is not None, (
+    #         "Python inference is not yet implemented for "
+    #         f"export_method={args.export_method}, format={args.format}."
+    #     )
+    logger.info("Running evaluation ... this takes a long time if you export to CPU.")
+    dataset = cfg.DATASETS.TEST[0]
+    data_loader = build_detection_test_loader(cfg, dataset)
+    # NOTE: hard-coded evaluator. change to the evaluator for your dataset
+    evaluator = COCOEvaluator(dataset, output_dir=args.output)
+
+    metrics = inference_on_dataset(exported_model, data_loader, evaluator)
+    print_csv_format(metrics)
