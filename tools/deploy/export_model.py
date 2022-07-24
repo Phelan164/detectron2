@@ -73,6 +73,7 @@ def export_scripting(torch_model):
         "pred_keypoints": torch.Tensor,
         "pred_keypoint_heatmaps": torch.Tensor,
     }
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     assert args.format == "torchscript", "Scripting only supports torchscript format."
 
     class ScriptableAdapterBase(nn.Module):
@@ -86,7 +87,6 @@ def export_scripting(torch_model):
     if isinstance(torch_model, GeneralizedRCNN):
         class ScriptableAdapter(ScriptableAdapterBase):
             def forward(self, inputs: Dict[str, torch.Tensor]) -> Tuple[Tensor, Tensor, Tensor]:
-                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 instances = self.model.inference(inputs, do_postprocess=False)
                 scores = [i.get_fields()["scores"] for i in instances]
                 max_len = max([len(s) for s in scores])
