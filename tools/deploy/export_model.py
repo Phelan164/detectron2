@@ -147,11 +147,8 @@ def export_tracing(torch_model, inputs):
         unused in deployment but needed for evaluation. We add it manually here.
         """
         input = inputs[0]
-        print("input: ", input)
         instances = traceable_model.outputs_schema(ts_model(input["image"]))[0]["instances"]
-        print("<<<<<instances ", instances)
         postprocessed = detector_postprocess(instances, input["height"], input["width"])
-        print(">>>>>postprocessed ", postprocessed)
 
         import numpy as np
         import cv2

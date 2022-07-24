@@ -226,8 +226,6 @@ class GeneralizedRCNN(nn.Module):
         """
         images = [i for i in batched_inputs["image"]]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
-        print(">>>>>>self.backbone.padding_constraints ", self.backbone.padding_constraints)
-        print(">>>>>>self.backbone.size_divisibility ", self.backbone.size_divisibility)
         images = ImageList.from_tensors(
             images,
             self.backbone.size_divisibility,

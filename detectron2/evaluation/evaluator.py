@@ -155,10 +155,7 @@ def inference_on_dataset(
                 total_eval_time = 0
 
             start_compute_time = time.perf_counter()
-            print(">>>model ", model)
-            print(">>>inputs ", inputs[0]['image'].shape, inputs)
             outputs = model(inputs)
-            print(">>>>> outputs", outputs)
 
             # print(">>>outputs ", type(outputs))
             # for o in outputs:
