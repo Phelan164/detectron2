@@ -86,10 +86,11 @@ def export_scripting(torch_model):
     if isinstance(torch_model, GeneralizedRCNN):
         class ScriptableAdapter(ScriptableAdapterBase):
             def forward(self, inputs: Dict[str, torch.Tensor]) -> Tuple[Tensor, Tensor, Tensor]:
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
                 instances = self.model.inference(inputs, do_postprocess=False)
                 scores = [i.get_fields()["scores"] for i in instances]
                 max_len = max([len(s) for s in scores])
-                scores = [torch.cat((s, torch.zeros(max_len-len(s))), 0) for s in scores]
+                scores = [torch.cat((s.to("cpu"), torch.zeros(max_len-len(s))), 0).to(device) for s in scores]
                 return torch.vstack([i.get_fields()["pred_keypoints"] for i in instances]), torch.vstack(scores), torch.vstack([i.get_fields()["pred_boxes"] for i in instances])
                 # return [i.get_fields() for i in instances]
     else:
@@ -252,5 +253,5 @@ if __name__ == "__main__":
     # NOTE: hard-coded evaluator. change to the evaluator for your dataset
     evaluator = COCOEvaluator(dataset, output_dir=args.output)
 
-    metrics = inference_on_dataset(exported_model, data_loader, evaluator)
-    print_csv_format(metrics)
+    # metrics = inference_on_dataset(exported_model, data_loader, evaluator)
+    # print_csv_format(metrics)
