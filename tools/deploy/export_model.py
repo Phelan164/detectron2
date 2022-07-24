@@ -73,7 +73,6 @@ def export_scripting(torch_model):
         "pred_keypoints": torch.Tensor,
         "pred_keypoint_heatmaps": torch.Tensor,
     }
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     assert args.format == "torchscript", "Scripting only supports torchscript format."
 
     class ScriptableAdapterBase(nn.Module):
@@ -82,6 +81,7 @@ def export_scripting(torch_model):
         def __init__(self):
             super().__init__()
             self.model = torch_model
+            self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
             self.eval()
 
     if isinstance(torch_model, GeneralizedRCNN):
@@ -90,7 +90,7 @@ def export_scripting(torch_model):
                 instances = self.model.inference(inputs, do_postprocess=False)
                 scores = [i.get_fields()["scores"] for i in instances]
                 max_len = max([len(s) for s in scores])
-                scores = [torch.cat((s.to("cpu"), torch.zeros(max_len-len(s))), 0).to(device) for s in scores]
+                scores = [torch.cat((s.to("cpu"), torch.zeros(max_len-len(s))), 0).to(self.device) for s in scores]
                 return torch.vstack([i.get_fields()["pred_keypoints"] for i in instances]), torch.vstack(scores), torch.vstack([i.get_fields()["pred_boxes"] for i in instances])
                 # return [i.get_fields() for i in instances]
     else:
