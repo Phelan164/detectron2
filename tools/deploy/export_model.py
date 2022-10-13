@@ -86,12 +86,29 @@ def export_scripting(torch_model):
 
     if isinstance(torch_model, GeneralizedRCNN):
         class ScriptableAdapter(ScriptableAdapterBase):
-            def forward(self, inputs: Dict[str, torch.Tensor]) -> Tuple[Tensor, Tensor, Tensor]:
+            def forward(self, inputs: Dict[str, torch.Tensor]) -> Tuple[Tensor, Tensor, Tensor, Tensor]:
                 instances = self.model.inference(inputs, do_postprocess=False)
-                scores = [i.get_fields()["scores"] for i in instances]
-                max_len = max([len(s) for s in scores])
-                scores = [torch.cat((s.to("cpu"), torch.zeros(max_len-len(s))), 0).to(self.device) for s in scores]
-                return torch.vstack([i.get_fields()["pred_keypoints"] for i in instances]), torch.vstack(scores), torch.vstack([i.get_fields()["pred_boxes"] for i in instances])
+
+                boxes = []
+                labels = []
+                scores = []
+                masks = []
+                for r in instances:
+                    boxes.append(r.get_fields()["pred_boxes"])
+                    labels.append(r.get_fields()["pred_classes"])
+                    scores.append(r.get_fields()["scores"])
+                    masks.append(r.get_fields()["pred_masks"])
+
+                max_len_scores = max([len(s) for s in scores])
+                scores = [torch.cat((s.to("cpu"), torch.zeros(max_len_scores - len(s))), 0).to("cpu") for s in scores]
+                max_len_labels = max([len(s) for s in labels])
+                labels = [torch.cat((lb.to("cpu"), torch.zeros(max_len_labels - len(lb))), 0).to("cpu") for lb in labels]
+                max_len_boxes = max([len(s) for s in boxes])
+                boxes = [torch.cat((b.to("cpu"), torch.zeros(max_len_boxes - len(b), 4)), 0).to("cpu") for b in boxes]
+                max_len_masks = max([len(s) for s in masks])
+                masks = [torch.cat((m.to("cpu"), torch.zeros(max_len_masks - len(m), 1, 28, 28)), 0).to("cpu") for m in masks]
+
+                return torch.vstack(boxes), torch.vstack(labels), torch.vstack(masks), torch.vstack(scores)
                 # return [i.get_fields() for i in instances]
     else:
         class ScriptableAdapter(ScriptableAdapterBase):
@@ -238,17 +255,17 @@ if __name__ == "__main__":
         exported_model = export_tracing(torch_model, sample_inputs)
 
 
-    # run evaluation with the converted model
-    # if args.run_eval:
-    #     assert exported_model is not None, (
-    #         "Python inference is not yet implemented for "
-    #         f"export_method={args.export_method}, format={args.format}."
-    #     )
-    logger.info("Running evaluation ... this takes a long time if you export to CPU.")
-    dataset = cfg.DATASETS.TEST[0]
-    data_loader = build_detection_test_loader(cfg, dataset)
-    # NOTE: hard-coded evaluator. change to the evaluator for your dataset
-    evaluator = COCOEvaluator(dataset, output_dir=args.output)
-
-    # metrics = inference_on_dataset(exported_model, data_loader, evaluator)
-    # print_csv_format(metrics)
+    # # run evaluation with the converted model
+    # # if args.run_eval:
+    # #     assert exported_model is not None, (
+    # #         "Python inference is not yet implemented for "
+    # #         f"export_method={args.export_method}, format={args.format}."
+    # #     )
+    # logger.info("Running evaluation ... this takes a long time if you export to CPU.")
+    # dataset = cfg.DATASETS.TEST[0]
+    # data_loader = build_detection_test_loader(cfg, dataset)
+    # # NOTE: hard-coded evaluator. change to the evaluator for your dataset
+    # evaluator = COCOEvaluator(dataset, output_dir=args.output)
+    #
+    # # metrics = inference_on_dataset(exported_model, data_loader, evaluator)
+    # # print_csv_format(metrics)
