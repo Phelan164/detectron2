@@ -98,7 +98,7 @@ def export_scripting(torch_model):
                     labels.append(r.get_fields()["pred_classes"])
                     scores.append(r.get_fields()["scores"])
                     masks.append(r.get_fields()["pred_masks"])
-
+                    print("---->>> pred_boxes ", r.get_fields()["pred_boxes"].shape)
                 max_len_scores = max([len(s) for s in scores])
                 scores = [torch.cat((s.to("cpu"), torch.zeros(max_len_scores - len(s))), 0).to("cpu") for s in scores]
                 max_len_labels = max([len(s) for s in labels])
@@ -107,9 +107,13 @@ def export_scripting(torch_model):
                 boxes = [torch.cat((b.to("cpu"), torch.zeros(max_len_boxes - len(b), 4)), 0).to("cpu") for b in boxes]
                 max_len_masks = max([len(s) for s in masks])
                 masks = [torch.cat((m.to("cpu"), torch.zeros(max_len_masks - len(m), 1, 28, 28)), 0).to("cpu") for m in masks]
-
-                return torch.vstack(boxes), torch.vstack(labels), torch.vstack(masks), torch.vstack(scores)
-                # return [i.get_fields() for i in instances]
+                print("---->>> torch.stack(boxes)", torch.stack(boxes).shape)
+                print("---->>> torch.stack(labels)", torch.stack(labels).shape)
+                print("---->>> torch.stack(masks)", torch.stack(masks).shape)
+                print("---->>> torch.stack(scores)", torch.stack(scores).shape)
+                # return boxes, labels, masks, scores
+                return torch.stack(boxes), torch.stack(labels), torch.stack(masks), torch.stack(scores)
+                # return [//vi.get_fields() for i in instances]
     else:
         class ScriptableAdapter(ScriptableAdapterBase):
             def forward(self, inputs: Tuple[Dict[str, torch.Tensor]]) -> List[Dict[str, Tensor]]:
