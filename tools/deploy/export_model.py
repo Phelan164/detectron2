@@ -98,22 +98,15 @@ def export_scripting(torch_model):
                     labels.append(r.get_fields()["pred_classes"])
                     scores.append(r.get_fields()["scores"])
                     masks.append(r.get_fields()["pred_masks"])
-                    print("---->>> pred_boxes ", r.get_fields()["pred_boxes"].shape)
                 max_len_scores = max([len(s) for s in scores])
-                scores = [torch.cat((s.to("cpu"), torch.zeros(max_len_scores - len(s))), 0).to("cpu") for s in scores]
+                scores = [torch.cat((s.to(self.device), torch.zeros(max_len_scores - len(s))), 0).to(self.device) for s in scores]
                 max_len_labels = max([len(s) for s in labels])
-                labels = [torch.cat((lb.to("cpu"), torch.zeros(max_len_labels - len(lb))), 0).to("cpu") for lb in labels]
+                labels = [torch.cat((lb.to(self.device), torch.zeros(max_len_labels - len(lb))), 0).to(self.device) for lb in labels]
                 max_len_boxes = max([len(s) for s in boxes])
-                boxes = [torch.cat((b.to("cpu"), torch.zeros(max_len_boxes - len(b), 4)), 0).to("cpu") for b in boxes]
+                boxes = [torch.cat((b.to(self.device), torch.zeros(max_len_boxes - len(b), 4)), 0).to(self.device) for b in boxes]
                 max_len_masks = max([len(s) for s in masks])
-                masks = [torch.cat((m.to("cpu"), torch.zeros(max_len_masks - len(m), 1, 28, 28)), 0).to("cpu") for m in masks]
-                print("---->>> torch.stack(boxes)", torch.stack(boxes).shape)
-                print("---->>> torch.stack(labels)", torch.stack(labels).shape)
-                print("---->>> torch.stack(masks)", torch.stack(masks).shape)
-                print("---->>> torch.stack(scores)", torch.stack(scores).shape)
-                # return boxes, labels, masks, scores
+                masks = [torch.cat((m.to(self.device), torch.zeros(max_len_masks - len(m), 1, 28, 28)), 0).to(self.device) for m in masks]
                 return torch.stack(boxes), torch.stack(labels), torch.stack(masks), torch.stack(scores)
-                # return [//vi.get_fields() for i in instances]
     else:
         class ScriptableAdapter(ScriptableAdapterBase):
             def forward(self, inputs: Tuple[Dict[str, torch.Tensor]]) -> List[Dict[str, Tensor]]:
