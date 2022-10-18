@@ -101,11 +101,11 @@ def export_scripting(torch_model):
                 max_len_scores = max([len(s) for s in scores])
                 scores = [torch.cat((s.to("cpu"), torch.zeros(max_len_scores - len(s))), 0) for s in scores]
                 max_len_labels = max([len(s) for s in labels])
-                labels = [torch.cat((lb, torch.zeros(max_len_labels - len(lb))), 0) for lb in labels]
+                labels = [torch.cat((lb.to("cpu"), torch.zeros(max_len_labels - len(lb))), 0) for lb in labels]
                 max_len_boxes = max([len(s) for s in boxes])
-                boxes = [torch.cat((b, torch.zeros(max_len_boxes - len(b), 4)), 0) for b in boxes]
+                boxes = [torch.cat((b.to("cpu"), torch.zeros(max_len_boxes - len(b), 4)), 0) for b in boxes]
                 max_len_masks = max([len(s) for s in masks])
-                masks = [torch.cat((m, torch.zeros(max_len_masks - len(m), 1, 28, 28)), 0) for m in masks]
+                masks = [torch.cat((m.to("cpu"), torch.zeros(max_len_masks - len(m), 1, 28, 28)), 0) for m in masks]
                 return torch.stack(boxes).to(self.device), torch.stack(labels).to(self.device), torch.stack(masks).to(self.device), torch.stack(scores).to(self.device)
     else:
         class ScriptableAdapter(ScriptableAdapterBase):
