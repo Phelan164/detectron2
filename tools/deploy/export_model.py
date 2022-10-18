@@ -99,7 +99,7 @@ def export_scripting(torch_model):
                     scores.append(r.get_fields()["scores"])
                     masks.append(r.get_fields()["pred_masks"])
                 max_len_scores = max([len(s) for s in scores])
-                scores = [torch.cat((s, torch.zeros(max_len_scores - len(s))), 0) for s in scores]
+                scores = [torch.cat((s.to("cpu"), torch.zeros(max_len_scores - len(s))), 0) for s in scores]
                 max_len_labels = max([len(s) for s in labels])
                 labels = [torch.cat((lb, torch.zeros(max_len_labels - len(lb))), 0) for lb in labels]
                 max_len_boxes = max([len(s) for s in boxes])
