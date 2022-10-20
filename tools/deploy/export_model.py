@@ -89,9 +89,15 @@ def export_scripting(torch_model):
             def forward(self, inputs: Dict[str, torch.Tensor]) -> Tuple[Tensor, Tensor, Tensor]:
                 instances = self.model.inference(inputs, do_postprocess=False)
                 scores = [i.get_fields()["scores"] for i in instances]
-                max_len = max([len(s) for s in scores])
-                scores = [torch.cat((s.to("cpu"), torch.zeros(max_len-len(s))), 0).to(self.device) for s in scores]
-                return torch.vstack([i.get_fields()["pred_keypoints"] for i in instances]), torch.vstack(scores), torch.vstack([i.get_fields()["pred_boxes"] for i in instances])
+                max_len_scores = max([len(s) for s in scores])
+                scores = [torch.cat((s.to("cpu"), torch.zeros(max_len_scores-len(s))), 0) for s in scores]
+                kpoints = [i.get_fields()["pred_keypoints"] for i in instances]
+                max_len_kpoints = max([len(kp) for kp in kpoints])
+                kpoints = [torch.cat((kp.to("cpu"), torch.zeros(max_len_kpoints - len(kp), 17, 3)), 0) for kp in kpoints]
+                boxes = [i.get_fields()["pred_boxes"] for i in instances]
+                max_len_boxes = max([len(b) for b in boxes])
+                boxes = [torch.cat((b.to("cpu"), torch.zeros(max_len_boxes - len(b), 4)), 0) for b in boxes]
+                return torch.stack(kpoints).to(self.device), torch.stack(scores).to(self.device), torch.stack(boxes).to(self.device)
                 # return [i.get_fields() for i in instances]
     else:
         class ScriptableAdapter(ScriptableAdapterBase):
